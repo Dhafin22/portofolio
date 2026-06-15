@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoVault - Portfolio Dashboard</title>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'inter': ['Inter', 'sans-serif'],
+                        'poppins': ['Poppins', 'sans-serif'],
+                    },
+                    colors: {
+                        'neon-blue': '#3b82f6',
+                        'neon-purple': '#8b5cf6',
+                        'dark-bg': '#08080f',
+                        'dark-card': '#12121a',
+                        'glass-bg': 'rgba(18,18,30,0.55)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+    </script>
+
+    <style>
+        :root {
+            --bg-deep: #08080f;
+            --glass-bg: rgba(18, 18, 30, 0.55);
+            --glass-border: rgba(255, 255, 255, 0.06);
+            --glass-highlight: rgba(255, 255, 255, 0.03);
+            --neon-blue: #3b82f6;
+            --neon-purple: #8b5cf6;
+            --neon-cyan: #00d4ff;
+            --green-profit: #10b981;
+            --red-loss: #ef4444;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+        }
+
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+        }
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            min-height: 100vh;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Animated background orbs */
+        .bg-orbs {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .bg-orbs .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.12;
+            animation: orbFloat 20s ease-in-out infinite;
+        }
+        .bg-orbs .orb:nth-child(1) {
+            width: 500px;
+            height: 500px;
+            background: #3b82f6;
+            top: -150px;
+            left: -100px;
+            animation-delay: 0s;
+        }
+        .bg-orbs .orb:nth-child(2) {
+            width: 400px;
+            height: 400px;
+            background: #8b5cf6;
+            bottom: -100px;
+            right: -80px;
+            animation-delay: -7s;
+            animation-duration: 25s;
+        }
+        .bg-orbs .orb:nth-child(3) {
+            width: 300px;
+            height: 300px;
+            background: #00d4ff;
+            top: 50%;
+            left: 50%;
+            animation-delay: -14s;
+            animation-duration: 22s;
+        }
+        @keyframes orbFloat {
+            0%,
+            100% {
+                transform: translate(0, 0) scale(1);
+            }
+            25% {
+                transform: translate(60px, -40px) scale(1.15);
+            }
+            50% {
+                transform: translate(-30px, 50px) scale(0.9);
+            }
+            75% {
+                transform: translate(-50px, -30px) scale(1.1);
+            }
+        }
+
+        /* Glassmorphism */
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 var(--glass-highlight);
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05),
+                0 0 30px rgba(59, 130, 246, 0.08);
+            transform: translateY(-2px);
+        }
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 var(--glass-highlight);
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:hover {
+            border-color: rgba(255, 255, 255, 0.14);
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06),
+                0 0 40px rgba(139, 92, 246, 0.06);
+            transform: translateY(-3px);
+        }
+
+        /* Neon glow border */
+        .neon-border-blue {
+            position: relative;
+        }
+        .neon-border-blue::after {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 21px;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.5), transparent, rgba(139, 92, 246, 0.4));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Shimmer effect */
+        @keyframes shimmer {
+            0% {
+                background-position: -200% center;
+            }
+            100% {
+                background-position: 200% center;
+            }
+        }
+        .shimmer-text {
+            background: linear-gradient(90deg, #94a3b8, #e2e8f0, #94a3b8);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        /* Pulse glow */
+        @keyframes pulseGlow {
+            0%,
+            100% {
+                box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+            }
+            50% {
+                box-shadow: 0 0 30px rgba(59, 130, 246, 0.45), 0 0 60px rgba(139, 92, 246, 0.2);
+            }
+        }
+        .pulse-glow {
+            animation: pulseGlow 3s ease-in-out infinite;
+        }
+
+        /* Slide in */
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-slide-in {
+            animation: slideInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        .animate-slide-in-delay-1 {
+            animation-delay: 0.1s;
+            opacity: 0;
+        }
+        .animate-slide-in-delay-2 {
+            animation-delay: 0.2s;
+            opacity: 0;
+        }
+        .animate-slide-in-delay-3 {
+            animation-delay: 0.3s;
+            opacity: 0;
+        }
+        .animate-slide-in-delay-4 {
+            animation-delay: 0.4s;
+            opacity: 0;
+        }
+
+        /* Modal backdrop */
+        .modal-backdrop {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        /* Fullscreen chart */
+        .chart-fullscreen {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: var(--bg-deep);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            border-radius: 0;
+        }
+
+        /* Watchlist ticker */
+        @keyframes tickerGlow {
+            0%,
+            100% {
+                border-color: rgba(255, 255, 255, 0.06);
+            }
+            50% {
+                border-color: rgba(139, 92, 246, 0.4);
+            }
+        }
+        .watchlist-item {
+            animation: tickerGlow 4s ease-in-out infinite;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                z-index: 50;
+                height: 100vh;
+                transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.6);
+                z-index: 40;
+            }
+            .sidebar-overlay.open {
+                display: block;
+            }
+            .main-content {
+                margin-left: 0 !important;
+            }
+            .glass-card {
+                border-radius: 14px;
+            }
+            .glass {
+                border-radius: 12px;
+            }
+        }
+        @media (min-width: 769px) {
+            .sidebar {
+                transform: translateX(0) !important;
+            }
+            .sidebar-overlay {
+                display: none !important;
+            }
+            .main-content {
+                margin-left: 260px;
+            }
+        }
+    </style>
+</head>
+<body class="font-inter antialiased">
+
+    <!-- Background Orbs -->
+    <div class="bg-orbs">
+        <div class="orb"></div>
+        <div class="orb"></div>
+        <div class="orb"></div>
+    </div>
+
+    <!-- Sidebar Overlay (Mobile) -->
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar fixed top-0 left-0 h-full w-[260px] z-50 flex flex-col p-5"
+    style="background: rgba(10,10,20,0.85); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border-right: 1px solid rgba(255,255,255,0.06);">
+    <!-- Logo -->
+    <div class="flex items-center gap-3 mb-10 pl-1">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-neon-blue to-neon-purple flex items-center justify-center pulse-glow shadow-lg shadow-purple-500/20">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/>
+            </svg>
+        </div>
+        <span class="text-xl font-bold text-white tracking-tight font-poppins">Crypto<span class="text-neon-blue">Vault</span></span>
+    </div>
+
+    <!-- Nav Links -->
+    <nav class="flex flex-col gap-1.5 flex-1">
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Menu</p>
+        <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 bg-white/5 text-white border-l-2 border-neon-blue">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Dashboard
+        </a>
+        <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 text-gray-400 hover:text-white hover:bg-white/5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 5-6"/></svg>
+            Portfolio
+        </a>
+        <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 text-gray-400 hover:text-white hover:bg-white/5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Watchlist
+        </a>
+        <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 text-gray-400 hover:text-white hover:bg-white/5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Settings
+        </a>
+    </nav>
+
+    <!-- Sidebar Footer -->
+    <div class="mt-auto pt-4 border-t border-white/5">
+        <div class="glass rounded-xl p-3 flex items-center gap-3" style="border-radius:12px;">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-white font-bold text-xs">P</div>
+            <div>
+                <p class="text-xs font-semibold text-white">Portfolio Active</p>
+                <p class="text-[10px] text-gray-400">7 Assets Tracked</p>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<!-- Main Content -->
+<main id="mainContent" class="main-content transition-all duration-400 p-4 md:p-6 lg:p-8 relative z-10 min-h-screen"
+style="margin-left: 260px;">
+<!-- Top Bar -->
+<div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+    <!-- Hamburger (Mobile) -->
+    <button onclick="toggleSidebar()" class="md:hidden p-2 rounded-lg glass text-white hover:bg-white/10 transition-all">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div>
+        <h1 class="text-2xl md:text-3xl font-bold text-white font-poppins tracking-tight">Dashboard</h1>
+        <p class="text-sm text-gray-400 mt-0.5">Portfolio overview & analytics</p>
+    </div>
+    <div class="flex items-center gap-3">
+        <button onclick="openAddModal()" class="px-5 py-2.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-neon-blue to-neon-purple hover:from-blue-500 hover:to-purple-500 transition-all duration-300 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/35 active:scale-95 flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Tambah Asset
+        </button>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 mb-6">
+    <!-- Total Asset -->
+    <div class="glass-card p-5 md:p-6 animate-slide-in animate-slide-in-delay-1 neon-border-blue cursor-pointer">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Total Asset</p>
+        <p id="totalAssetValue" class="text-2xl md:text-3xl font-bold text-white font-poppins tracking-tight">Rp 0</p>
+        <div class="flex items-center gap-2 mt-2">
+            <span class="text-xs text-gray-500">Updated real-time</span>
+            <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+        </div>
+    </div>
+
+    <!-- Profit / Loss -->
+    <div class="glass-card p-5 md:p-6 animate-slide-in animate-slide-in-delay-2 cursor-pointer" id="profitLossCard">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Profit / Loss</p>
+        <p id="profitLossValue" class="text-2xl md:text-3xl font-bold font-poppins tracking-tight">Rp 0</p>
+        <p id="profitLossPercent" class="text-sm font-medium mt-1">0%</p>
+    </div>
+
+    <!-- Total Coin -->
+    <div class="glass-card p-5 md:p-6 animate-slide-in animate-slide-in-delay-3 cursor-pointer sm:col-span-2 lg:col-span-1">
+        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Total Coin</p>
+        <p id="totalCoinCount" class="text-2xl md:text-3xl font-bold text-white font-poppins tracking-tight">0 Asset</p>
+        <div class="flex flex-wrap gap-1.5 mt-2" id="coinTags">
+            <!-- Dynamic coin tags -->
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5 mb-6">
+    <!-- Portfolio Line Chart -->
+    <div class="glass-card p-5 md:p-6 lg:col-span-2 animate-slide-in animate-slide-in-delay-4">
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h3 class="text-base font-semibold text-white font-poppins">Perkembangan Portfolio</h3>
+            <div class="flex gap-1 bg-white/5 rounded-lg p-1">
+                <button onclick="switchChartPeriod(7, this)" class="px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-300 bg-neon-blue text-white chart-period-btn">7 Hari</button>
+                <button onclick="switchChartPeriod(30, this)" class="px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-300 text-gray-400 hover:text-white chart-period-btn">30 Hari</button>
+                <button onclick="switchChartPeriod(90, this)" class="px-3 py-1.5 rounded-md text-xs font-semibold transition-all duration-300 text-gray-400 hover:text-white chart-period-btn">90 Hari</button>
+            </div>
+        </div>
+        <div class="relative" style="height: 280px;">
+            <canvas id="portfolioChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Asset Allocation Pie Chart -->
+    <div class="glass-card p-5 md:p-6 animate-slide-in animate-slide-in-delay-4">
+        <h3 class="text-base font-semibold text-white font-poppins mb-4">Alokasi Asset</h3>
+        <div class="relative" style="height: 240px;">
+            <canvas id="allocationChart"></canvas>
+        </div>
+        <div class="flex flex-wrap gap-2 mt-3" id="allocationLegend">
+            <!-- Dynamic legend -->
+        </div>
+    </div>
+</div>
+
+<!-- Watchlist & TradingView Row -->
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-5 mb-6">
+    <!-- Watchlist -->
+    <div class="glass-card p-5 md:p-6 lg:col-span-1">
+        <h3 class="text-base font-semibold text-white font-poppins mb-4">Watchlist</h3>
+        <div class="space-y-2" id="watchlistContainer">
+            <!-- Dynamic watchlist -->
+        </div>
+    </div>
+
+    <!-- TradingView Widget -->
+    <div class="glass-card p-5 md:p-6 lg:col-span-3 relative" id="tradingViewContainer">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h3 class="text-base font-semibold text-white font-poppins">Chart TradingView</h3>
+            <div class="flex gap-2 flex-wrap">
+                <select id="tvSymbolSelect" onchange="changeTradingViewSymbol()" class="bg-white/10 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-medium text-white focus:outline-none focus:border-neon-blue transition-all cursor-pointer">
+                    <option value="BTCUSDT" class="bg-gray-900">BTC/USDT</option>
+                    <option value="ETHUSDT" class="bg-gray-900">ETH/USDT</option>
+                    <option value="SOLUSDT" class="bg-gray-900">SOL/USDT</option>
+                    <option value="XRPUSDT" class="bg-gray-900">XRP/USDT</option>
+                </select>
+                <button onclick="toggleFullscreenChart()" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 text-gray-300 hover:text-white hover:bg-white/15 transition-all flex items-center gap-1.5">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                    Fullscreen
+                </button>
+            </div>
+        </div>
+        <div id="tradingviewWidget" style="height: 380px; border-radius: 12px; overflow: hidden;">
+            <!-- TradingView widget loads here -->
+        </div>
+    </div>
+</div>
+
+<!-- Portfolio Table -->
+<div class="glass-card p-5 md:p-6 mb-6 overflow-hidden">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <h3 class="text-base font-semibold text-white font-poppins">Portfolio Table</h3>
+        <span class="text-xs text-gray-500" id="tableLastUpdated">Last updated: just now</span>
+    </div>
+    <div class="overflow-x-auto -mx-2">
+        <table class="w-full text-sm min-w-[700px]">
+            <thead>
+                <tr class="text-left text-xs font-semibold text-gray-400 uppercase tracking-wider border-b border-white/5">
+                    <th class="pb-3 px-2">Asset</th>
+                    <th class="pb-3 px-2">Jumlah</th>
+                    <th class="pb-3 px-2">Harga Beli</th>
+                    <th class="pb-3 px-2">Harga Saat Ini</th>
+                    <th class="pb-3 px-2">Profit / Loss</th>
+                    <th class="pb-3 px-2 text-center">Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="portfolioTableBody">
+                <!-- Dynamic rows -->
+            </tbody>
+        </table>
+    </div>
+    <div id="emptyPortfolioMsg" class="text-center py-10 text-gray-500 hidden">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mx-auto mb-3 opacity-40"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <p class="text-sm">Belum ada aset tercatat.</p>
+        <p class="text-xs mt-1">Klik "Tambah Asset" untuk memulai.</p>
+    </div>
+</div>
+</main>
+
+<!-- Add Asset Modal -->
+<div id="addAssetModal" class="fixed inset-0 z-[200] flex items-center justify-center p-4 hidden">
+    <div class="modal-backdrop absolute inset-0" onclick="closeAddModal()"></div>
+    <div class="glass-card p-6 md:p-8 w-full max-w-md relative z-10 animate-slide-in" style="animation-delay:0s; opacity:1;">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="text-lg font-bold text-white font-poppins">Tambah Asset</h3>
+            <button onclick="closeAddModal()" class="p-1.5 rounded-lg hover:bg-white/10 transition-all text-gray-400 hover:text-white">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <form id="addAssetForm" onsubmit="handleAddAsset(event)" class="space-y-4">
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Nama Asset</label>
+                <select id="assetName" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-neon-blue transition-all appearance-none cursor-pointer" style="background-image: url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2216%22 height=%2216%22 fill=%22%2394a3b8%22 viewBox=%220 0 16 16%22%3E%3Cpath d=%22M8 11L3 6h10z%22/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 12px center;">
+                    <option value="" disabled selected class="bg-gray-900">Pilih aset crypto</option>
+                    <option value="BTC" class="bg-gray-900">Bitcoin (BTC)</option>
+                    <option value="ETH" class="bg-gray-900">Ethereum (ETH)</option>
+                    <option value="SOL" class="bg-gray-900">Solana (SOL)</option>
+                    <option value="BNB" class="bg-gray-900">BNB</option>
+                    <option value="XRP" class="bg-gray-900">XRP</option>
+                    <option value="SUI" class="bg-gray-900">SUI</option>
+                    <option value="AVAX" class="bg-gray-900">AVAX</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Jumlah</label>
+                <input type="number" id="assetAmount" step="any" min="0.00000001" placeholder="Contoh: 0.05" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-blue transition-all">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Harga Beli (Rp)</label>
+                <input type="number" id="assetBuyPrice" step="any" min="1" placeholder="Contoh: 1500000000" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-blue transition-all">
+            </div>
+            <button type="submit" class="w-full py-3 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-neon-blue to-neon-purple hover:from-blue-500 hover:to-purple-500 transition-all duration-300 shadow-lg shadow-purple-500/20 active:scale-[0.97] mt-2">
+                Simpan Asset
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Fullscreen Chart Overlay -->
+<div id="fullscreenChartOverlay" class="fixed inset-0 z-[150] bg-[#08080f] flex-col hidden" style="padding: 16px;">
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-bold text-white font-poppins">Chart TradingView - Fullscreen</h3>
+        <button onclick="toggleFullscreenChart()" class="p-2 rounded-lg glass text-white hover:bg-white/10 transition-all">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+    </div>
+    <div id="fullscreenTradingView" class="flex-1 rounded-xl overflow-hidden" style="min-height: 0;"></div>
+</div>
+
+<!-- Scripts -->
+<script>
+    // ============ DEFAULT DATA ============
+    const defaultPortfolio = [
+        { id: '1', name: 'BTC', fullName: 'Bitcoin', amount: 0.05, buyPrice: 1200000000, currentPrice: 1500000000 },
+        { id: '2', name: 'ETH', fullName: 'Ethereum', amount: 1.5, buyPrice: 45000000, currentPrice: 55000000 },
+        { id: '3', name: 'SOL', fullName: 'Solana', amount: 20, buyPrice: 2800000, currentPrice: 3500000 },
+        { id: '4', name: 'BNB', fullName: 'BNB', amount: 3, buyPrice: 8500000, currentPrice: 10000000 },
+        { id: '5', name: 'XRP', fullName: 'XRP', amount: 1000, buyPrice: 10000, currentPrice: 12500 },
+        { id: '6', name: 'SUI', fullName: 'SUI', amount: 500, buyPrice: 18000, currentPrice: 22000 },
+        { id: '7', name: 'AVAX', fullName: 'AVAX', amount: 10, buyPrice: 500000, currentPrice: 580000 },
+    ];
+
+    const watchlistData = [
+        { name: 'BTC', fullName: 'Bitcoin', price: 1500000000, change: 2.35 },
+        { name: 'ETH', fullName: 'Ethereum', price: 55000000, change: -1.20 },
+        { name: 'SOL', fullName: 'Solana', price: 3500000, change: 5.67 },
+        { name: 'BNB', fullName: 'BNB', price: 10000000, change: 1.80 },
+        { name: 'XRP', fullName: 'XRP', price: 12500, change: -0.45 },
+    ];
+
+    // ============ LOCAL STORAGE ============
+    function loadPortfolio() {
+        try {
+            const data = localStorage.getItem('cryptovault_portfolio');
+            if (data) {
+                const parsed = JSON.parse(data);
+                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            }
+        } catch (e) {
+            console.warn('Failed to load portfolio from localStorage');
+        }
+        // Save defaults
+        savePortfolio(defaultPortfolio);
+        return JSON.parse(JSON.stringify(defaultPortfolio));
+    }
+
+    function savePortfolio(portfolio) {
+        try {
+            localStorage.setItem('cryptovault_portfolio', JSON.stringify(portfolio));
+        } catch (e) {
+            console.warn('Failed to save portfolio to localStorage');
+        }
+    }
+
+    let portfolio = loadPortfolio();
+
+    // ============ HELPERS ============
+    function formatRupiah(num) {
+        if (Math.abs(num) >= 1000000000) {
+            return 'Rp ' + (num / 1000000000).toFixed(2) + ' M';
+        }
+        return 'Rp ' + Math.round(num).toLocaleString('id-ID');
+    }
+
+    function formatRupiahCompact(num) {
+        if (Math.abs(num) >= 1000000000) {
+            return 'Rp ' + (num / 1000000000).toFixed(2) + ' M';
+        }
+        if (Math.abs(num) >= 1000000) {
+            return 'Rp ' + (num / 1000000).toFixed(1) + ' Jt';
+        }
+        return 'Rp ' + Math.round(num).toLocaleString('id-ID');
+    }
+
+    function getTotalInvestment() {
+        return portfolio.reduce((sum, a) => sum + (a.amount * a.buyPrice), 0);
+    }
+
+    function getTotalCurrentValue() {
+        return portfolio.reduce((sum, a) => sum + (a.amount * a.currentPrice), 0);
+    }
+
+    function getProfitLoss() {
+        return getTotalCurrentValue() - getTotalInvestment();
+    }
+
+    function getProfitLossPercent() {
+        const inv = getTotalInvestment();
+        if (inv === 0) return 0;
+        return ((getTotalCurrentValue() - inv) / inv) * 100;
+    }
+
+    // ============ UI UPDATES ============
+    function updateDashboardStats() {
+        const totalValue = getTotalCurrentValue();
+        const profitLoss = getProfitLoss();
+        const profitLossPct = getProfitLossPercent();
+        const totalCoins = portfolio.length;
+
+        // Total Asset
+        document.getElementById('totalAssetValue').textContent = formatRupiah(totalValue);
+
+        // Profit/Loss
+        const plEl = document.getElementById('profitLossValue');
+        const plPctEl = document.getElementById('profitLossPercent');
+        const plCard = document.getElementById('profitLossCard');
+        if (profitLoss >= 0) {
+            plEl.textContent = '+' + formatRupiah(profitLoss);
+            plEl.style.color = '#10b981';
+            plPctEl.textContent = '+' + profitLossPct.toFixed(2) + '%';
+            plPctEl.style.color = '#10b981';
+            plCard.style.borderLeft = '2px solid rgba(16,185,129,0.5)';
+        } else {
+            plEl.textContent = formatRupiah(profitLoss);
+            plEl.style.color = '#ef4444';
+            plPctEl.textContent = profitLossPct.toFixed(2) + '%';
+            plPctEl.style.color = '#ef4444';
+            plCard.style.borderLeft = '2px solid rgba(239,68,68,0.5)';
+        }
+
+        // Total Coin
+        document.getElementById('totalCoinCount').textContent = totalCoins + ' Asset';
+
+        // Coin tags
+        const tagsContainer = document.getElementById('coinTags');
+        tagsContainer.innerHTML = portfolio.map(a =>
+            `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/8 text-gray-300 border border-white/5">${a.name}</span>`
+        ).join('');
+
+        // Update table
+        updatePortfolioTable();
+        // Update watchlist
+        updateWatchlist();
+        // Update allocation chart
+        updateAllocationChart();
+        // Update portfolio line chart
+        updatePortfolioChart();
+    }
+
+    function updatePortfolioTable() {
+        const tbody = document.getElementById('portfolioTableBody');
+        const emptyMsg = document.getElementById('emptyPortfolioMsg');
+        const lastUpdated = document.getElementById('tableLastUpdated');
+
+        if (portfolio.length === 0) {
+            tbody.innerHTML = '';
+            emptyMsg.classList.remove('hidden');
+            lastUpdated.textContent = 'No data';
+            return;
+        }
+        emptyMsg.classList.add('hidden');
+        lastUpdated.textContent = 'Last updated: just now';
+
+        tbody.innerHTML = portfolio.map(a => {
+            const invest = a.amount * a.buyPrice;
+            const current = a.amount * a.currentPrice;
+            const pl = current - invest;
+            const plPct = invest > 0 ? ((pl / invest) * 100) : 0;
+            const isProfit = pl >= 0;
+            const plColor = isProfit ? '#10b981' : '#ef4444';
+            const plSign = isProfit ? '+' : '';
+
+            return `
+                    <tr class="border-b border-white/3 hover:bg-white/3 transition-all duration-200">
+                        <td class="py-3.5 px-2">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-br ${getAssetGradient(a.name)} flex items-center justify-center text-white font-bold text-xs shadow-lg">${a.name.charAt(0)}</div>
+                                <div>
+                                    <p class="font-semibold text-white text-sm">${a.name}</p>
+                                    <p class="text-[11px] text-gray-500">${a.fullName}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-2 text-white font-medium">${a.amount.toLocaleString('id-ID', {maximumSignificantDigits: 6})}</td>
+                        <td class="py-3.5 px-2 text-gray-300">${formatRupiahCompact(a.buyPrice)}</td>
+                        <td class="py-3.5 px-2 text-white font-medium">${formatRupiahCompact(a.currentPrice)}</td>
+                        <td class="py-3.5 px-2 font-semibold" style="color:${plColor}">${plSign}${formatRupiahCompact(pl)} (${plSign}${plPct.toFixed(2)}%)</td>
+                        <td class="py-3.5 px-2 text-center">
+                            <button onclick="deleteAsset('${a.id}')" class="p-2 rounded-lg hover:bg-red-500/15 transition-all text-gray-500 hover:text-red-400 group" title="Hapus asset">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="group-hover:stroke-red-400 transition-all"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+        }).join('');
+    }
+
+    function getAssetGradient(name) {
+        const gradients = {
+            'BTC': 'from-orange-400 to-yellow-500',
+            'ETH': 'from-blue-400 to-indigo-500',
+            'SOL': 'from-purple-400 to-pink-500',
+            'BNB': 'from-yellow-400 to-orange-500',
+            'XRP': 'from-blue-500 to-cyan-400',
+            'SUI': 'from-teal-400 to-cyan-500',
+            'AVAX': 'from-red-400 to-pink-500',
+        };
+        return gradients[name] || 'from-gray-400 to-gray-600';
+    }
+
+    function updateWatchlist() {
+        const container = document.getElementById('watchlistContainer');
+        container.innerHTML = watchlistData.map(w => {
+            const isPositive = w.change >= 0;
+            const changeColor = isPositive ? '#10b981' : '#ef4444';
+            const changeSign = isPositive ? '+' : '';
+            return `
+                    <div class="flex items-center justify-between p-3 rounded-xl bg-white/3 hover:bg-white/6 transition-all cursor-pointer watchlist-item border border-white/3">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-7 h-7 rounded-full bg-gradient-to-br ${getAssetGradient(w.name)} flex items-center justify-center text-white font-bold text-[10px]">${w.name.charAt(0)}</div>
+                            <div>
+                                <p class="text-sm font-semibold text-white">${w.name}</p>
+                                <p class="text-[10px] text-gray-500">${w.fullName}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-medium text-white">${formatRupiahCompact(w.price)}</p>
+                            <p class="text-xs font-semibold" style="color:${changeColor}">${changeSign}${w.change.toFixed(2)}%</p>
+                        </div>
+                    </div>
+                `;
+        }).join('');
+    }
+
+    // ============ CHARTS ============
+    let portfolioChartInstance = null;
+    let allocationChartInstance = null;
+    let currentChartPeriod = 7;
+
+    function generateHistoricalData(days) {
+        const totalValue = getTotalCurrentValue();
+        const data = [];
+        const now = new Date();
+        let value = totalValue * 0.85; // Start ~15% lower
+
+        for (let i = days; i >= 0; i--) {
+            const date = new Date(now);
+            date.setDate(date.getDate() - i);
+            // Random walk with slight upward bias
+            const change = (Math.random() - 0.42) * (totalValue * 0.04);
+            value += change;
+            value = Math.max(value, totalValue * 0.7);
+            value = Math.min(value, totalValue * 1.15);
+            if (i === 0) value = totalValue; // End at current value
+            data.push({
+                date: date,
+                value: Math.round(value)
+            });
+        }
+        return data;
+    }
+
+    function updatePortfolioChart() {
+        const ctx = document.getElementById('portfolioChart').getContext('2d');
+        const historicalData = generateHistoricalData(currentChartPeriod);
+
+        const labels = historicalData.map(d => {
+            const opts = { day: 'numeric', month: 'short' };
+            if (currentChartPeriod === 90) opts.month = 'short';
+            return d.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+        });
+        const values = historicalData.map(d => d.value);
+
+        if (portfolioChartInstance) portfolioChartInstance.destroy();
+
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, 'rgba(59,130,246,0.35)');
+        gradient.addColorStop(0.5, 'rgba(139,92,246,0.12)');
+        gradient.addColorStop(1, 'rgba(139,92,246,0.0)');
+
+        portfolioChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Portfolio Value',
+                    data: values,
+                    borderColor: '#3b82f6',
+                    backgroundColor: gradient,
+                    borderWidth: 2.5,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 6,
+                    pointHoverBackgroundColor: '#3b82f6',
+                    pointHoverBorderColor: '#fff',
+                    pointHoverBorderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { intersect: false, mode: 'index' },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(18,18,30,0.95)',
+                        titleColor: '#e2e8f0',
+                        bodyColor: '#e2e8f0',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1,
+                        cornerRadius: 10,
+                        padding: 12,
+                        callbacks: {
+                            label: function(ctx) {
+                                return ' ' + formatRupiah(ctx.parsed.y);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.03)' },
+                        ticks: { color: '#64748b', font: { size: 10 }, maxTicksLimit: 8 },
+                        border: { display: false }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.04)' },
+                        ticks: {
+                            color: '#64748b',
+                            font: { size: 10 },
+                            callback: function(v) { return formatRupiahCompact(v); },
+                            maxTicksLimit: 5
+                        },
+                        border: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    function updateAllocationChart() {
+        const ctx = document.getElementById('allocationChart').getContext('2d');
+        if (allocationChartInstance) allocationChartInstance.destroy();
+
+        const totalValue = getTotalCurrentValue();
+        if (totalValue === 0 || portfolio.length === 0) {
+            allocationChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels: ['No Data'], datasets: [{ data: [1], backgroundColor: ['rgba(255,255,255,0.1)'],
+                        borderWidth: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+            document.getElementById('allocationLegend').innerHTML =
+                '<span class="text-xs text-gray-500">Belum ada data</span>';
+            return;
+        }
+
+        const labels = portfolio.map(a => a.name);
+        const dataValues = portfolio.map(a => a.amount * a.currentPrice);
+        const percentages = dataValues.map(v => (v / totalValue) * 100);
+
+        const colors = [
+            '#f7931a', '#627eea', '#9945ff', '#f0b90b', '#00aaff', '#00d4aa', '#e84142'
+        ];
+
+        allocationChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: dataValues,
+                    backgroundColor: colors.slice(0, portfolio.length),
+                    borderColor: 'rgba(18,18,30,0.8)',
+                    borderWidth: 3,
+                    hoverBorderColor: 'rgba(255,255,255,0.3)',
+                    hoverBorderWidth: 3,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(18,18,30,0.95)',
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1,
+                        cornerRadius: 10,
+                        padding: 12,
+                        callbacks: {
+                            label: function(ctx) {
+                                return ' ' + ctx.label + ': ' + percentages[ctx.dataIndex].toFixed(1) +
+                                    '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Legend
+        const legendContainer = document.getElementById('allocationLegend');
+        legendContainer.innerHTML = portfolio.map((a, i) => {
+            const pct = percentages[i].toFixed(1);
+            return `
+                    <div class="flex items-center gap-1.5 text-[11px] font-medium text-gray-300">
+                        <span class="w-2.5 h-2.5 rounded-full inline-block" style="background-color:${colors[i]}"></span>
+                        ${a.name} <span class="text-gray-500">${pct}%</span>
+                    </div>
+                `;
+        }).join('');
+    }
+
+    function switchChartPeriod(days, btn) {
+        currentChartPeriod = days;
+        document.querySelectorAll('.chart-period-btn').forEach(b => {
+            b.classList.remove('bg-neon-blue', 'text-white');
+            b.classList.add('text-gray-400');
+        });
+        btn.classList.add('bg-neon-blue', 'text-white');
+        btn.classList.remove('text-gray-400');
+        updatePortfolioChart();
+    }
+
+    // ============ TRADINGVIEW WIDGET ============
+    let tvScriptLoaded = false;
+    let currentTVSymbol = 'BTCUSDT';
+    let isFullscreen = false;
+
+    function loadTradingViewWidget(containerId, symbol, height) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = '';
+
+        // Remove any existing TradingView scripts
+        const existingScripts = document.querySelectorAll('script[src*="tradingview-widget"]');
+        existingScripts.forEach(s => s.remove());
+
+        const widgetDiv = document.createElement('div');
+        widgetDiv.className = 'tradingview-widget-container';
+        widgetDiv.style.height = height + 'px';
+        widgetDiv.innerHTML = `
+                <div id="tv_${containerId}" style="height:100%;"></div>
+            `;
+        container.appendChild(widgetDiv);
+
+        const script = document.createElement('script');
+        script.src = 'https://s3.tradingview.com/tv.js';
+        script.async = true;
+        script.onload = function() {
+            if (typeof TradingView !== 'undefined') {
+                new TradingView.widget({
+                    autosize: true,
+                    symbol: symbol,
+                    interval: 'D',
+                    timezone: 'Asia/Jakarta',
+                    theme: 'dark',
+                    style: '1',
+                    locale: 'id',
+                    enable_publishing: false,
+                    allow_symbol_change: false,
+                    hide_top_toolbar: false,
+                    hide_legend: false,
+                    save_image: false,
+                    container_id: 'tv_' + containerId,
+                    backgroundColor: 'rgba(18,18,30,0.8)',
+                    gridColor: 'rgba(255,255,255,0.04)',
+                    details: true,
+                    hotlist: false,
+                    calendar: false,
+                });
+            }
+        };
+        container.appendChild(script);
+        tvScriptLoaded = true;
+    }
+
+    function changeTradingViewSymbol() {
+        currentTVSymbol = document.getElementById('tvSymbolSelect').value;
+        const targetId = isFullscreen ? 'fullscreenTradingView' : 'tradingviewWidget';
+        const height = isFullscreen ? window.innerHeight - 100 : 380;
+        loadTradingViewWidget(targetId, currentTVSymbol, height);
+    }
+
+    function toggleFullscreenChart() {
+        const overlay = document.getElementById('fullscreenChartOverlay');
+        isFullscreen = !isFullscreen;
+        if (isFullscreen) {
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+            loadTradingViewWidget('fullscreenTradingView', currentTVSymbol, window.innerHeight - 100);
+        } else {
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+            document.body.style.overflow = '';
+            loadTradingViewWidget('tradingviewWidget', currentTVSymbol, 380);
+        }
+    }
+
+    // ============ MODAL ============
+    function openAddModal() {
+        document.getElementById('addAssetModal').classList.remove('hidden');
+        document.getElementById('assetName').value = '';
+        document.getElementById('assetAmount').value = '';
+        document.getElementById('assetBuyPrice').value = '';
+    }
+
+    function closeAddModal() {
+        document.getElementById('addAssetModal').classList.add('hidden');
+    }
+
+    function handleAddAsset(e) {
+        e.preventDefault();
+        const name = document.getElementById('assetName').value;
+        const amount = parseFloat(document.getElementById('assetAmount').value);
+        const buyPrice = parseFloat(document.getElementById('assetBuyPrice').value);
+
+        if (!name || isNaN(amount) || amount <= 0 || isNaN(buyPrice) || buyPrice <= 0) {
+            alert('Mohon isi semua field dengan benar.');
+            return;
+        }
+
+        // Check for duplicate
+        const existing = portfolio.find(a => a.name === name);
+        if (existing) {
+            if (!confirm(`Aset ${name} sudah ada. Ingin menambah jumlahnya?`)) return;
+            existing.amount += amount;
+            // Update buy price to weighted average
+            const totalOld = (existing.amount - amount) * existing.buyPrice;
+            const totalNew = amount * buyPrice;
+            existing.buyPrice = (totalOld + totalNew) / existing.amount;
+        } else {
+            const fullNameMap = {
+                'BTC': 'Bitcoin',
+                'ETH': 'Ethereum',
+                'SOL': 'Solana',
+                'BNB': 'BNB',
+                'XRP': 'XRP',
+                'SUI': 'SUI',
+                'AVAX': 'AVAX'
+            };
+            const currentPriceMap = {
+                'BTC': 1500000000,
+                'ETH': 55000000,
+                'SOL': 3500000,
+                'BNB': 10000000,
+                'XRP': 12500,
+                'SUI': 22000,
+                'AVAX': 580000
+            };
+            const newAsset = {
+                id: Date.now().toString(),
+                name: name,
+                fullName: fullNameMap[name] || name,
+                amount: amount,
+                buyPrice: buyPrice,
+                currentPrice: currentPriceMap[name] || buyPrice * 1.1,
+            };
+            portfolio.push(newAsset);
+        }
+
+        savePortfolio(portfolio);
+        updateDashboardStats();
+        closeAddModal();
+
+        // Small toast-like feedback
+        showToast('Aset berhasil ditambahkan!');
+    }
+
+    function deleteAsset(id) {
+        if (!confirm('Yakin ingin menghapus aset ini? Data tidak dapat dikembalikan.')) return;
+        portfolio = portfolio.filter(a => a.id !== id);
+        savePortfolio(portfolio);
+        updateDashboardStats();
+        showToast('Aset berhasil dihapus.');
+    }
+
+    function showToast(message) {
+        // Simple toast
+        let toast = document.getElementById('toastNotification');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'toastNotification';
+            toast.style.cssText = `
+                    position: fixed;
+                    bottom: 24px;
+                    right: 24px;
+                    z-index: 300;
+                    background: rgba(18,18,30,0.9);
+                    backdrop-filter: blur(20px);
+                    border: 1px solid rgba(255,255,255,0.1);
+                    border-radius: 12px;
+                    padding: 12px 20px;
+                    color: #e2e8f0;
+                    font-size: 14px;
+                    font-weight: 500;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+                    transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
+                    opacity: 0;
+                    transform: translateY(20px);
+                    pointer-events: none;
+                `;
+            document.body.appendChild(toast);
+        }
+        toast.textContent = '✓ ' + message;
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+        clearTimeout(toast._timeout);
+        toast._timeout = setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(20px)';
+        }, 2500);
+    }
+
+    // ============ SIDEBAR MOBILE ============
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        const isOpen = sidebar.classList.contains('open');
+        if (isOpen) {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('open');
+        } else {
+            sidebar.classList.add('open');
+            overlay.classList.add('open');
+        }
+    }
+
+    function closeSidebar() {
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('sidebarOverlay').classList.remove('open');
+    }
+
+    // ============ KEYBOARD SHORTCUTS ============
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeAddModal();
+            if (isFullscreen) toggleFullscreenChart();
+            closeSidebar();
+        }
+        // Ctrl+N or Cmd+N for new asset
+        if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+            e.preventDefault();
+            openAddModal();
+        }
+    });
+
+    // ============ CLOSE MODAL ON BACKDROP CLICK ============
+    document.getElementById('addAssetModal').addEventListener('click', function(e) {
+        if (e.target === this) closeAddModal();
+    });
+
+    // ============ RESIZE HANDLER FOR FULLSCREEN ============
+    window.addEventListener('resize', function() {
+        if (isFullscreen) {
+            loadTradingViewWidget('fullscreenTradingView', currentTVSymbol, window.innerHeight - 100);
+        }
+    });
+
+    // ============ INIT ============
+    function init() {
+        updateDashboardStats();
+        updatePortfolioChart();
+        updateAllocationChart();
+        updateWatchlist();
+        loadTradingViewWidget('tradingviewWidget', 'BTCUSDT', 380);
+    }
+
+    // Run on load
+    document.addEventListener('DOMContentLoaded', init);
+
+    // Simulate live price updates (subtle random fluctuations)
+    setInterval(() => {
+        let changed = false;
+        portfolio.forEach(a => {
+            const fluctuation = (Math.random() - 0.48) * 0.02; // ±2% max
+            const newPrice = a.currentPrice * (1 + fluctuation);
+            a.currentPrice = Math.round(newPrice / 100) * 100; // Round to nearest 100
+        });
+        // Update watchlist prices too
+        watchlistData.forEach(w => {
+            const fluctuation = (Math.random() - 0.48) * 0.015;
+            w.price = Math.round(w.price * (1 + fluctuation) / 100) * 100;
+            w.change += (Math.random() - 0.5) * 0.3;
+            w.change = Math.round(w.change * 100) / 100;
+            w.change = Math.max(-15, Math.min(15, w.change));
+        });
+        savePortfolio(portfolio);
+        updateDashboardStats();
+    }, 15000); // Every 15 seconds
+
+    console.log('%c🔐 CryptoVault %cReady',
+        'font-size:18px;font-weight:bold;color:#3b82f6;',
+        'font-size:14px;color:#94a3b8;');
+    console.log('%cPortfolio tracker aktif | Data tersimpan di LocalStorage',
+        'font-size:11px;color:#64748b;');
+    console.log('%cShortcut: Ctrl+N = Tambah Asset | Esc = Tutup Modal',
+        'font-size:10px;color:#475569;');
+</script>
+</body>
+</html>
